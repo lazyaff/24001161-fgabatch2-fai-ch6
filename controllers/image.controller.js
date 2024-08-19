@@ -1,4 +1,5 @@
 const prisma = require("../libs/prisma");
+const imageKit = require("../libs/imageKit");
 
 // get all images
 async function getImages(req, res) {
@@ -70,6 +71,62 @@ async function getImageDetails(req, res) {
             message: "Something went wrong",
         });
     }
+}
+
+// upload new image
+async function uploadImage(req, res) {
+    const file = req.file;
+    const { title, description } = req.body;
+
+    // validate title and description must not be empty
+    if (!title || !description) {
+        return res.status(400).json({
+            success: false,
+            status: 400,
+            message: "Title and description are required",
+        });
+    }
+
+    // title and description must be a string
+    if (typeof title !== "string" || typeof description !== "string") {
+        return res.status(400).json({
+            success: false,
+            status: 400,
+            message: "Title and description must be a string",
+        });
+    }
+
+    // upload image
+    imageKit
+        .upload({
+            file: file.buffer,
+            fileName: file.originalname,
+            folder: "Binar",
+        })
+        .then(async (result) => {
+            // save data to database
+            const data = await prisma.images.create({
+                data: {
+                    title: title,
+                    description: description,
+                    url: result.url,
+                },
+            });
+
+            return res.status(200).json({
+                success: true,
+                status: 200,
+                message: "Image uploaded successfully",
+                data,
+            });
+        })
+        .catch((error) => {
+            return res.status(500).json({
+                success: false,
+                status: 500,
+                message: "Something went wrong",
+            });
+        });
 }
 
 // update image details
@@ -199,6 +256,7 @@ async function deleteImage(req, res) {
 module.exports = {
     getImages,
     getImageDetails,
+    uploadImage,
     updateImageDetails,
     deleteImage,
 };
